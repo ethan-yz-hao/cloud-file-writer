@@ -1,1 +1,2 @@
 tailwind
+aws-sdk
