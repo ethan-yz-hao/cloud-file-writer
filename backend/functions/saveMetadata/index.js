@@ -3,13 +3,13 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { nanoid } from "nanoid";
 export const handler = async (event) => {
     const client = new DynamoDBClient({ region: "us-east-2" });
-    const { inputText, fileName, filePath } = JSON.parse(event.body);
+    const { inputText, OutputFileName, filePath } = JSON.parse(event.body);
     const id = nanoid();
     const item = {
-        id: id,
-        inputText: inputText,
-        fileName: fileName,
-        filePath: filePath
+        id,
+        inputText,
+        OutputFileName,
+        filePath
     };
     const params = {
         TableName: process.env.TABLE_NAME,

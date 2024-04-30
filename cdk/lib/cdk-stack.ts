@@ -24,13 +24,6 @@ export class CdkStack extends cdk.Stack {
             ],
         });
 
-        // const userArn = 'arn:aws:iam::164452774963:user/cloud-file-writer';
-        // bucket.addToResourcePolicy(new iam.PolicyStatement({
-        //     actions: ['s3:GetObject', 's3:PutObject'],
-        //     resources: [bucket.bucketArn + '/*'],
-        //     principals: [new iam.ArnPrincipal(userArn)],
-        // }));
-
         const table = new dynamodb.Table(this, 'MetadataTable', {
             partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -54,9 +47,6 @@ export class CdkStack extends cdk.Stack {
             environment: {
                 TABLE_NAME: table.tableName
             },
-            // role: new iam.Role(this, 'SaveMetadataLambdaRole', {
-            //     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-            // }),
         });
 
 

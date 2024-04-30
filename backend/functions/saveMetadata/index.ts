@@ -4,21 +4,21 @@ import {nanoid} from "nanoid";
 
 interface Metadata {
     inputText: string;
-    fileName: string;
+    OutputFileName: string;
     filePath: string;
 }
 
 export const handler = async (event: { body: string }): Promise<any> => {
     const client = new DynamoDBClient({region: "us-east-2"});
 
-    const {inputText, fileName, filePath}: Metadata = JSON.parse(event.body);
+    const {inputText, OutputFileName, filePath}: Metadata = JSON.parse(event.body);
 
     const id = nanoid()
     const item = {
-        id: id,
-        inputText: inputText,
-        fileName: fileName,
-        filePath: filePath
+        id,
+        inputText,
+        OutputFileName,
+        filePath
     };
 
     const params = {

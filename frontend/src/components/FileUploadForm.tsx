@@ -5,10 +5,7 @@ import saveToDynamoDB from "@/services/saveToDynamoDB";
 const FileUploadForm = () => {
     const [inputText, setInputText] = useState('');
     const [file, setFile] = useState<File | null>(null);
-
-    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setInputText(event.target.value);
-    };
+    const [outputFileName, setOutputFileName] = useState('');
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -29,10 +26,14 @@ const FileUploadForm = () => {
             alert('Please enter the text before submitting!');
             return;
         }
+        if (!outputFileName) {
+            alert('Please enter the output file name before submitting!');
+            return;
+        }
 
         const fileUploadStatus = await uploadFileToS3(file);
         if (fileUploadStatus.success) {
-            await saveToDynamoDB(inputText, file.name);
+            await saveToDynamoDB(inputText, outputFileName, fileUploadStatus.filePath!);
         }
     };
 
@@ -43,12 +44,19 @@ const FileUploadForm = () => {
                     type="text"
                     placeholder="Input text"
                     value={inputText}
-                    onChange={handleInputChange}
+                    onChange={(event) => setInputText(event.target.value)}
                     className="input input-bordered w-full max-w-xs"
                 />
                 <input
                     type="file"
                     onChange={handleFileChange}
+                    className="input input-bordered w-full max-w-xs"
+                />
+                <input
+                    type="text"
+                    placeholder="Output file name"
+                    value={outputFileName}
+                    onChange={(event) => setOutputFileName(event.target.value)}
                     className="input input-bordered w-full max-w-xs"
                 />
                 <button type="submit" className="btn btn-primary">Submit</button>
