@@ -4,7 +4,8 @@ exports.handler = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_presigned_post_1 = require("@aws-sdk/s3-presigned-post");
 const handler = async (event) => {
-    const s3Client = new client_s3_1.S3Client({ region: "us-east-2" });
+    const region = process.env.AWS_REGION;
+    const s3Client = new client_s3_1.S3Client({ region });
     const { key, expiresInSeconds = 1000, conditions = [] } = JSON.parse(event.body);
     const Conditions = [
         ...conditions,

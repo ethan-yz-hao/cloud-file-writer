@@ -1,0 +1,22 @@
+{
+  "name": "saveMetadata",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Lambda function to save metadata to DynamoDB",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "cdk deploy"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.565.0",
+    "@aws-sdk/client-ssm": "^3.565.0",
+    "aws-lambda": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.137",
+    "@types/node": "^14.0.0",
+    "typescript": "^4.0.0"
+  },
+  "private": true
+}

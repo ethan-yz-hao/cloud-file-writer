@@ -21,7 +21,17 @@ const uploadFileToS3 = async (file: File): Promise<{ success: boolean, message: 
         const uploadResponse = await axios.post(url, formData);
 
         if (uploadResponse.status === 204) {
-            return {success: true, message: 'File uploaded successfully', filePath: url};
+            const extractBucketNameFromUrl = (url: string): string => {
+                const parsedUrl = new URL(url);
+                const hostname = parsedUrl.hostname;
+                const parts = hostname.split('.');
+                const bucketName = parts[0];
+                return bucketName;
+            }
+
+            const bucketName = extractBucketNameFromUrl(url);
+            const filePath = bucketName + '/' + fields.key;
+            return {success: true, message: 'File uploaded successfully', filePath};
         } else {
             return {success: false, message: 'Upload failed'};
         }

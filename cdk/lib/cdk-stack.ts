@@ -5,6 +5,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as path from 'path';
 
 export class CdkStack extends cdk.Stack {
@@ -28,6 +29,7 @@ export class CdkStack extends cdk.Stack {
             partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
             removalPolicy: cdk.RemovalPolicy.DESTROY,
+            stream: dynamodb.StreamViewType.NEW_IMAGE
         });
 
         const getPresignedUrlLambda = new lambda.Function(this, 'GetPresignedUrlLambda', {
@@ -49,6 +51,26 @@ export class CdkStack extends cdk.Stack {
             },
         });
 
+        const ec2Role = new iam.Role(this, 'EC2Role', {
+            assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+            managedPolicies: [
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonS3FullAccess'),
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonDynamoDBFullAccess'),
+                iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonEC2FullAccess'),
+            ],
+        });
+        const instanceProfile = new iam.CfnInstanceProfile(this, 'InstanceProfile', {
+            roles: [ec2Role.roleName],
+        });
+
+        const ec2HandlerLambda = new lambda.Function(this, 'Ec2HandlerLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            handler: 'index.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/ec2Handler')),
+            environment: {
+                INSTANCE_PROFILE_ARN: instanceProfile.attrArn,
+            }
+        });
 
         getPresignedUrlLambda.addToRolePolicy(new iam.PolicyStatement({
             actions: ['s3:GetObject', 's3:PutObject'],
@@ -59,6 +81,21 @@ export class CdkStack extends cdk.Stack {
             actions: ['dynamodb:PutItem'],
             resources: [table.tableArn],
         }));
+
+        ec2HandlerLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['ec2:RunInstances', 'ec2:DescribeInstances', 'ec2:TerminateInstances',
+                'ssm:SendCommand', 'ssm:GetCommandInvocation'
+            ],
+            resources: ['*'],
+        }));
+
+        const streamSource = new lambdaEventSources.DynamoEventSource(table, {
+            startingPosition: lambda.StartingPosition.LATEST,
+            batchSize: 1,
+            bisectBatchOnError: true,
+            retryAttempts: 2
+        });
+        ec2HandlerLambda.addEventSource(streamSource);
 
         const api = new apigateway.RestApi(this, 'ApiGateway', {
             restApiName: 'CloudFileWriterServiceAPI',

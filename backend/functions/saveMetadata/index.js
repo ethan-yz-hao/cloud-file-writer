@@ -2,7 +2,8 @@ import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { nanoid } from "nanoid";
 export const handler = async (event) => {
-    const client = new DynamoDBClient({ region: "us-east-2" });
+    const region = process.env.AWS_REGION;
+    const client = new DynamoDBClient({ region });
     const { inputText, OutputFileName, filePath } = JSON.parse(event.body);
     const id = nanoid();
     const item = {

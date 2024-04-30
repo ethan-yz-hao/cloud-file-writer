@@ -2,7 +2,8 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 
 export const handler = async (event: { body: string }): Promise<any> => {
-    const s3Client = new S3Client({ region: "us-east-2"});
+    const region = process.env.AWS_REGION as string;
+    const s3Client = new S3Client({ region});
     const { key, expiresInSeconds = 1000, conditions = [] } = JSON.parse(event.body);
 
     const Conditions = [

@@ -9,7 +9,8 @@ interface Metadata {
 }
 
 export const handler = async (event: { body: string }): Promise<any> => {
-    const client = new DynamoDBClient({region: "us-east-2"});
+    const region = process.env.AWS_REGION as string;
+    const client = new DynamoDBClient({region});
 
     const {inputText, OutputFileName, filePath}: Metadata = JSON.parse(event.body);
 
