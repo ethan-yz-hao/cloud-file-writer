@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const uploadFileToS3 = async (file: File): Promise<{ success: boolean, message: string }> => {
     try {
-        const response = await axios.post('https://1mbeiz85q3.execute-api.us-east-2.amazonaws.com/prod/get-presigned-url', {
+        const response = await axios.post('https://hsds1jildd.execute-api.us-east-2.amazonaws.com/prod/get-presigned-url', {
             key: file.name});
 
         const { url, fields } = response.data;
@@ -18,10 +18,6 @@ const uploadFileToS3 = async (file: File): Promise<{ success: boolean, message: 
             }
         });
         formData.append('file', file);
-
-        formData.forEach((value, key) => {
-            console.log(key, value);
-        });
 
         const uploadResponse = await axios.post(url, formData);
 

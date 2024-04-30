@@ -24,6 +24,13 @@ export class CdkStack extends cdk.Stack {
             ],
         });
 
+        const userArn = 'arn:aws:iam::164452774963:user/cloud-file-writer';
+        bucket.addToResourcePolicy(new iam.PolicyStatement({
+            actions: ['s3:GetObject', 's3:PutObject'],
+            resources: [bucket.bucketArn + '/*'],
+            principals: [new iam.ArnPrincipal(userArn)],
+        }));
+
         const table = new dynamodb.Table(this, 'MetadataTable', {
             partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
             billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -35,8 +42,9 @@ export class CdkStack extends cdk.Stack {
             handler: 'index.handler',
             code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/getPresignedUrl')),
             environment: {
-                BUCKET_NAME: bucket.bucketName
+                BUCKET_NAME: bucket.bucketName,
             },
+
         });
 
         const saveMetadataLambda = new lambda.Function(this, 'SaveMetadataLambda', {
@@ -51,7 +59,7 @@ export class CdkStack extends cdk.Stack {
 
         getPresignedUrlLambda.addToRolePolicy(new iam.PolicyStatement({
             actions: ['s3:GetObject', 's3:PutObject'],
-            resources: [bucket.bucketArn]
+            resources: [bucket.bucketArn + "/*"],
         }));
 
         saveMetadataLambda.addToRolePolicy(new iam.PolicyStatement({
