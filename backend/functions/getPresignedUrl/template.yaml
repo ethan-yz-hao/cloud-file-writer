@@ -1,0 +1,14 @@
+Resources:
+  GetPresignedUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      CodeUri: .
+      Timeout: 60
+      Events:
+        PresignedUrlApi:
+          Type: Api
+          Properties:
+            Path: /get-presigned-url
+            Method: post

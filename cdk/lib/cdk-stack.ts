@@ -1,5 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
-import { Construct } from 'constructs';
+import {Construct} from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -8,49 +8,110 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 
 export class CdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+    constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+        super(scope, id, props);
 
-    const bucket = new s3.Bucket(this, 'MyUniqueBucketName', {
-      removalPolicy: cdk.RemovalPolicy.RETAIN,  // DESTROY for dev
-      publicReadAccess: false,
-      cors: [
-        {
-          allowedOrigins: ['*'],
-          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
-          allowedHeaders: ['*'],
-          maxAge: 3000,
-        },
-      ],
-    });
+        const bucket = new s3.Bucket(this, 'CloudFileWriter', {
+            removalPolicy: cdk.RemovalPolicy.DESTROY,  // DESTROY for dev, RETAIN for prod
+            publicReadAccess: false,
+            cors: [
+                {
+                    allowedOrigins: ['*'],
+                    allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST, s3.HttpMethods.DELETE],
+                    allowedHeaders: ['*'],
+                    maxAge: 3000,
+                },
+            ],
+        });
 
-    const table = new dynamodb.Table(this, 'MetadataTable', {
-      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+        const table = new dynamodb.Table(this, 'MetadataTable', {
+            partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
+            billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+        });
 
-    const backendLambda = new lambda.Function(this, 'BackendLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions')),
-      environment: {
-        TABLE_NAME: table.tableName,
-        BUCKET_NAME: bucket.bucketName
-      }
-    });
+        const getPresignedUrlLambda = new lambda.Function(this, 'GetPresignedUrlLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            handler: 'index.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/getPresignedUrl')),
+            environment: {
+                BUCKET_NAME: bucket.bucketName
+            },
+        });
 
-    backendLambda.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['s3:*', 'dynamodb:*'],
-      resources: [bucket.bucketArn, table.tableArn],
-    }));
+        const saveMetadataLambda = new lambda.Function(this, 'SaveMetadataLambda', {
+            runtime: lambda.Runtime.NODEJS_20_X,
+            handler: 'saveMetadata.handler',
+            code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/saveMetadata')),
+            environment: {
+                TABLE_NAME: table.tableName
+            }
+        });
 
-    const api = new apigateway.LambdaRestApi(this, 'LambdaApi', {
-      handler: backendLambda,
-      proxy: false
-    });
 
-    const items = api.root.addResource('items');
-    items.addMethod('POST');
-  }
+        getPresignedUrlLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['s3:GetObject', 's3:PutObject'],
+            resources: [bucket.bucketArn]
+        }));
+
+        saveMetadataLambda.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['dynamodb:PutItem'], // Specify only required permissions
+            resources: [table.tableArn]
+        }));
+
+        const api = new apigateway.RestApi(this, 'ApiGateway', {
+            restApiName: 'CloudFileWriterServiceAPI',
+            defaultCorsPreflightOptions: {
+                allowOrigins: apigateway.Cors.ALL_ORIGINS,
+                allowMethods: apigateway.Cors.ALL_METHODS,
+                allowHeaders: apigateway.Cors.DEFAULT_HEADERS
+            }
+        });
+
+        const integrationOptions = {
+            integrationResponses: [
+                {
+                    statusCode: '200',
+                    responseParameters: {
+                        'method.response.header.Access-Control-Allow-Origin': "'*'",
+                        'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,GET,PUT,POST,DELETE'",
+                        'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                    },
+                    responseTemplates: {
+                        'application/json': ""
+                    }
+                }
+            ],
+            requestTemplates: {"application/json": '{ "statusCode": 200 }'}
+        };
+
+        const getPresignedUrlLambdaIntegration = new apigateway.LambdaIntegration(getPresignedUrlLambda, integrationOptions);
+        const saveMetadataLambdaIntegration = new apigateway.LambdaIntegration(saveMetadataLambda, integrationOptions);
+
+        const getPresignedUrlResource = api.root.addResource('get-presigned-url');
+        getPresignedUrlResource.addMethod('POST', getPresignedUrlLambdaIntegration,
+            {
+                methodResponses: [{
+                    statusCode: '200',
+                    responseParameters: {
+                        'method.response.header.Access-Control-Allow-Origin': true,
+                        'method.response.header.Access-Control-Allow-Methods': true,
+                        'method.response.header.Access-Control-Allow-Headers': true,
+                    }
+                }]
+            });
+
+        const saveMetadataResource = api.root.addResource('save-metadata');
+        saveMetadataResource.addMethod('POST', saveMetadataLambdaIntegration,
+            {
+                methodResponses: [{
+                    statusCode: '200',
+                    responseParameters: {
+                        'method.response.header.Access-Control-Allow-Origin': true,
+                        'method.response.header.Access-Control-Allow-Methods': true,
+                        'method.response.header.Access-Control-Allow-Headers': true,
+                    }
+                }]
+            });
+    }
 }
