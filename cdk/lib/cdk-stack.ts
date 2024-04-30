@@ -24,12 +24,12 @@ export class CdkStack extends cdk.Stack {
             ],
         });
 
-        const userArn = 'arn:aws:iam::164452774963:user/cloud-file-writer';
-        bucket.addToResourcePolicy(new iam.PolicyStatement({
-            actions: ['s3:GetObject', 's3:PutObject'],
-            resources: [bucket.bucketArn + '/*'],
-            principals: [new iam.ArnPrincipal(userArn)],
-        }));
+        // const userArn = 'arn:aws:iam::164452774963:user/cloud-file-writer';
+        // bucket.addToResourcePolicy(new iam.PolicyStatement({
+        //     actions: ['s3:GetObject', 's3:PutObject'],
+        //     resources: [bucket.bucketArn + '/*'],
+        //     principals: [new iam.ArnPrincipal(userArn)],
+        // }));
 
         const table = new dynamodb.Table(this, 'MetadataTable', {
             partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
@@ -49,11 +49,14 @@ export class CdkStack extends cdk.Stack {
 
         const saveMetadataLambda = new lambda.Function(this, 'SaveMetadataLambda', {
             runtime: lambda.Runtime.NODEJS_20_X,
-            handler: 'saveMetadata.handler',
+            handler: 'index.handler',
             code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/saveMetadata')),
             environment: {
                 TABLE_NAME: table.tableName
-            }
+            },
+            // role: new iam.Role(this, 'SaveMetadataLambdaRole', {
+            //     assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+            // }),
         });
 
 
@@ -63,8 +66,8 @@ export class CdkStack extends cdk.Stack {
         }));
 
         saveMetadataLambda.addToRolePolicy(new iam.PolicyStatement({
-            actions: ['dynamodb:PutItem'], // Specify only required permissions
-            resources: [table.tableArn]
+            actions: ['dynamodb:PutItem'],
+            resources: [table.tableArn],
         }));
 
         const api = new apigateway.RestApi(this, 'ApiGateway', {

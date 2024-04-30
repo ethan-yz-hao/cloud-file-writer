@@ -1,5 +1,5 @@
 import '@/App.css'
-import FileUploadForm from "@/components/FileUploadForm.tsx";
+import FileUploadForm from "@/components/FileUploadForm";
 
 function App() {
     return (

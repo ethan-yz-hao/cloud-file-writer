@@ -1,31 +1,20 @@
-import {DynamoDBClient, PutItemCommand} from "@aws-sdk/client-dynamodb";
-import {marshall} from "@aws-sdk/util-dynamodb";
-import {nanoid} from "nanoid";
-
-interface Metadata {
-    inputText: string;
-    fileName: string;
-    filePath: string;
-}
-
-export const handler = async (event: { body: string }): Promise<any> => {
-    const client = new DynamoDBClient({region: "us-east-2"});
-
-    const {inputText, fileName, filePath}: Metadata = JSON.parse(event.body);
-
-    const id = nanoid()
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
+import { nanoid } from "nanoid";
+export const handler = async (event) => {
+    const client = new DynamoDBClient({ region: "us-east-2" });
+    const { inputText, fileName, filePath } = JSON.parse(event.body);
+    const id = nanoid();
     const item = {
         id: id,
         inputText: inputText,
         fileName: fileName,
         filePath: filePath
     };
-
     const params = {
-        TableName: process.env.TABLE_NAME as string,
+        TableName: process.env.TABLE_NAME,
         Item: marshall(item)
     };
-
     try {
         const data = await client.send(new PutItemCommand(params));
         return {
@@ -36,9 +25,10 @@ export const handler = async (event: { body: string }): Promise<any> => {
                 "Access-Control-Allow-Methods": "OPTIONS,POST",
                 "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token"
             },
-            body: JSON.stringify({message: "Data saved successfully", data}),
+            body: JSON.stringify({ message: "Data saved successfully", data }),
         };
-    } catch (err) {
+    }
+    catch (err) {
         console.error("DynamoDB error: ", err);
         return {
             statusCode: 500,
@@ -46,7 +36,7 @@ export const handler = async (event: { body: string }): Promise<any> => {
                 "Content-Type": "application/json",
                 "Access-Control-Allow-Origin": "*",
             },
-            body: JSON.stringify({message: "Failed to save data", error: err})
+            body: JSON.stringify({ message: "Failed to save data", error: err })
         };
     }
 };

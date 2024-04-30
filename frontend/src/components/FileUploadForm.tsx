@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import uploadFileToS3 from "@/services/uploadFileToS3";
+import saveToDynamoDB from "@/services/saveToDynamoDB";
 
 const FileUploadForm = () => {
     const [inputText, setInputText] = useState('');
@@ -24,12 +25,15 @@ const FileUploadForm = () => {
             alert('Please select a file before submitting!');
             return;
         }
+        if (!inputText) {
+            alert('Please enter the text before submitting!');
+            return;
+        }
 
         const fileUploadStatus = await uploadFileToS3(file);
-        console.log(fileUploadStatus);
-        // if (fileUploadStatus.success) {
-        //     await saveToDynamoDB(inputText, file.name);
-        // }
+        if (fileUploadStatus.success) {
+            await saveToDynamoDB(inputText, file.name);
+        }
     };
 
     return (
