@@ -1,6 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
@@ -23,6 +24,11 @@ export class CdkStack extends cdk.Stack {
                     maxAge: 3000,
                 },
             ],
+        });
+
+        new s3deploy.BucketDeployment(this, 'DeployScript', {
+            sources: [s3deploy.Source.asset(path.join(__dirname, '../resources'))],
+            destinationBucket: bucket,
         });
 
         const table = new dynamodb.Table(this, 'MetadataTable', {
@@ -70,6 +76,7 @@ export class CdkStack extends cdk.Stack {
             environment: {
                 INSTANCE_PROFILE_ARN: instanceProfile.attrArn,
                 TABLE_NAME: table.tableName,
+                BUCKET_NAME: bucket.bucketName,
             }
         });
 

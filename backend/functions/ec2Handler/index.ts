@@ -12,19 +12,17 @@ exec > /tmp/userdata.log 2>&1
 set -ex
 echo "Starting UserData script execution"
 
-aws configure set default.region ${process.env.AWS_REGION}
+export TABLE_NAME=${process.env.TABLE_NAME}
+export BUCKET_NAME=${process.env.BUCKET_NAME}
+export AWS_REGION=${process.env.AWS_REGION}
+export ITEM_ID=${itemId}
 
-DATA=$(aws dynamodb get-item --table-name ${process.env.TABLE_NAME} --key '{"id": {"S": "${itemId}"}}')
-FILE_PATH=$(echo $DATA | jq -r '.Item.filePath.S')
-INPUT_TEXT=$(echo $DATA | jq -r '.Item.inputText.S')
-OUTPUT_FILE_NAME=$(echo $DATA | jq -r '.Item.OutputFileName.S')
+aws configure set default.region $AWS_REGION
 
-aws s3 cp s3://$FILE_PATH /tmp/input-file
+aws s3 cp s3://$BUCKET_NAME/process_data.sh /tmp/process_data.sh
+chmod +x /tmp/process_data.sh
 
-echo " : $INPUT_TEXT" >> /tmp/input-file
-
-BUCKET_NAME=$(echo $FILE_PATH | cut -d'/' -f1)
-aws s3 cp /tmp/input-file s3://$BUCKET_NAME/$OUTPUT_FILE_NAME
+/tmp/process_data.sh
 
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 600")
 INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
