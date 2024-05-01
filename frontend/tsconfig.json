@@ -33,7 +33,6 @@
             "src/services/*"
         ],
     },
-    "skipLibCheck": true,
     "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "vite.config.ts"],

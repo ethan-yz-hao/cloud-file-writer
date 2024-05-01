@@ -2,7 +2,8 @@ import axios from 'axios';
 
 const uploadFileToS3 = async (file: File): Promise<{ success: boolean, message: string, filePath?: string }> => {
     try {
-        const response = await axios.post('https://hsds1jildd.execute-api.us-east-2.amazonaws.com/prod/get-presigned-url', {
+        const apiUrl = import.meta.env.VITE_API_URL + '/get-presigned-url';
+        const response = await axios.post(apiUrl, {
             key: file.name
         });
 
