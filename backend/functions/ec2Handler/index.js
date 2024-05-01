@@ -5,43 +5,43 @@ export const handler = async (event) => {
         if (record.eventName === 'INSERT') {
             const instanceInfo = record.dynamodb?.NewImage;
             const itemId = instanceInfo?.id?.S;
-            const userDataScript = Buffer.from(`
-                #!/bin/bash
-                yum update -y
-                yum install -y aws-cli jq
-                aws configure set default.region ${process.env.AWS_REGION}
-                # Fetch item details from DynamoDB
-                DATA=$(aws dynamodb get-item --table-name MetadataTable --key '{"id": {"S": "${itemId}"}}')
-                FILE_PATH=$(echo $DATA | jq -r '.Item.filePath.S')
-                INPUT_TEXT=$(echo $DATA | jq -r '.Item.inputText.S')
-                OUTPUT_FILE_NAME=$(echo $DATA | jq -r '.Item.OutputFileName.S')
+            const userDataScript = Buffer.from(`#!/bin/bash
+exec > /tmp/userdata.log 2>&1
+set -ex
+echo "Starting UserData script execution"
 
-                # Download file from S3
-                aws s3 cp s3://$FILE_PATH /tmp/input-file
+aws configure set default.region ${process.env.AWS_REGION}
 
-                # Append text to the file
-                echo "$INPUT_TEXT" >> /tmp/input-file
+DATA=$(aws dynamodb get-item --table-name ${process.env.TABLE_NAME} --key '{"id": {"S": "${itemId}"}}')
+FILE_PATH=$(echo $DATA | jq -r '.Item.filePath.S')
+INPUT_TEXT=$(echo $DATA | jq -r '.Item.inputText.S')
+OUTPUT_FILE_NAME=$(echo $DATA | jq -r '.Item.OutputFileName.S')
 
-                # Upload the modified file back to S3
-                BUCKET_NAME=$(echo $FILE_PATH | cut -d'/' -f1)
-                aws s3 cp /tmp/input-file s3://$BUCKET_NAME/$OUTPUT_FILE_NAME
+aws s3 cp s3://$FILE_PATH /tmp/input-file
 
-                # Self-terminate the EC2 instance
-                INSTANCE_ID=$(curl http://169.254.169.254/latest/meta-data/instance-id)
-                aws ec2 terminate-instances --instance-ids $INSTANCE_ID
+echo " : $INPUT_TEXT" >> /tmp/input-file
+
+BUCKET_NAME=$(echo $FILE_PATH | cut -d'/' -f1)
+aws s3 cp /tmp/input-file s3://$BUCKET_NAME/$OUTPUT_FILE_NAME
+
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 600")
+INSTANCE_ID=$(curl -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+aws ec2 terminate-instances --instance-ids $INSTANCE_ID
             `).toString('base64');
             try {
+                console.log(`Script for instance ${itemId}: ${userDataScript}`);
                 const runInstancesCommand = new RunInstancesCommand({
                     ImageId: 'ami-0ddda618e961f2270',
                     InstanceType: 't2.micro',
                     MinCount: 1,
                     MaxCount: 1,
-                    UserData: userDataScript, // Passing user data script to EC2 instance
-                    // IamInstanceProfile: { // Ensure the instance profile has the necessary permissions
-                    //     Name: 'EC2DynamoDBS3AccessProfile'
-                    // }
+                    UserData: userDataScript,
+                    IamInstanceProfile: {
+                        Arn: process.env.INSTANCE_PROFILE_ARN,
+                    },
                 });
-                await ec2Client.send(runInstancesCommand);
+                const res = await ec2Client.send(runInstancesCommand);
+                console.log(res);
                 console.log(`Instance launched with Item ID: ${itemId}`);
             }
             catch (error) {

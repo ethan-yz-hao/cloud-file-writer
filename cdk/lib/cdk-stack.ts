@@ -69,6 +69,7 @@ export class CdkStack extends cdk.Stack {
             code: lambda.Code.fromAsset(path.join(__dirname, '../../backend/functions/ec2Handler')),
             environment: {
                 INSTANCE_PROFILE_ARN: instanceProfile.attrArn,
+                TABLE_NAME: table.tableName,
             }
         });
 
@@ -84,8 +85,7 @@ export class CdkStack extends cdk.Stack {
 
         ec2HandlerLambda.addToRolePolicy(new iam.PolicyStatement({
             actions: ['ec2:RunInstances', 'ec2:DescribeInstances', 'ec2:TerminateInstances',
-                'ssm:SendCommand', 'ssm:GetCommandInvocation'
-            ],
+                'ssm:SendCommand', 'ssm:GetCommandInvocation', 'iam:PassRole'],
             resources: ['*'],
         }));
 
