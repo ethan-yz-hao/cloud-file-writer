@@ -1,5 +1,7 @@
 # Cloud File Writer
 
+![System Design](https://raw.githubusercontent.com/ethan-yz-hao/cloud-file-writer/main/images/system_design.svg)
+
 Cloud File Writer is a cloud-based application that allows users to append text to a file, with all operations being performed on the cloud using AWS services. The project is written in TypeScript and utilizes the AWS SDK for interfacing with AWS services and the AWS CDK for creating the infrastructure.
 
 Deployed at Amplify: [Cloud File Writer](https://main.d1eos5bt6pnhr6.amplifyapp.com/)
